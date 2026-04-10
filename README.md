@@ -1,4 +1,4 @@
-# [wav_robot]
+# wav_robot
 
 > **Status:** Under Active Development 🛠️
 
