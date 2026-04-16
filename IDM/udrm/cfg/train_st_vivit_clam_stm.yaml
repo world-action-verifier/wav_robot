@@ -1,0 +1,22 @@
+num_updates: 200_000
+name: st_vivit_clam_stm
+use_res_mseloss: True
+
+defaults:
+  - train_clam
+  - override modules/encoder: st_transformer
+  - override modules/decoder: st_transformer
+  - override model: st_vivit_clam_stm
+  - _self_
+
+data:
+  use_cache: False
+  drop_images_after_obs: True
+  use_images: True
+  embedding: False
+
+env:
+  image_obs: True
+
+model:
+  use_pretrained_embeddings: False

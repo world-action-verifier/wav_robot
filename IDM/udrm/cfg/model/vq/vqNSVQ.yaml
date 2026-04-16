@@ -1,0 +1,29 @@
+# Assume the same path as conf/model/idm/vq/vqNSVQ.yaml
+
+name: vqNSVQ
+
+# Keep hp_name behavior consistent with original codebook_size/discarding_threshold logging
+hp_name: ${.name}_cb-${.kwargs.codebook_size}-th-${.kwargs.discarding_threshold}
+
+kwargs:
+  # --- Field name expected by CLAM side (SpaceTimeIDM maps it to num_embeddings) ---
+  codebook_size: 32          # => converted to NSVQ.num_embeddings
+
+  # --- NSVQ-specific hyperparameters ---
+  embedding_dim: 256        # Internal NSVQ codebook / CNN channel dimension
+                            # (usually safer when matching idm.net.dim_model)
+
+  discarding_threshold: 0.01
+  initialization: "normal"  # one of ["normal", "uniform"]
+
+  # NSVQ CNN encoder depth choice (one of 1, 2, 4, 16, 64, 256)
+  # For 128x128 with patch_size=32 -> 4x4 patches, 16 is usually appropriate
+  code_seq_len: 256 #16 -> 256
+
+  # Image/patch settings (overridden by SpaceTimeIDM, kept here as defaults)
+  patch_size: 16
+  image_size: 128
+
+defaults:
+  - base
+  - _self_

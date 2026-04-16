@@ -1,0 +1,10 @@
+num_updates: 200_000
+name: st_vivit_clam
+use_res_mseloss: False
+
+defaults:
+  - train_clam
+  - override modules/encoder: st_transformer
+  - override modules/decoder: st_transformer
+  - override model: st_vivit_clam
+  - _self_

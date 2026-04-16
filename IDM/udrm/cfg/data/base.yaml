@@ -1,0 +1,30 @@
+# data loading defaults
+data_dir: ./IDM/data
+dataset_variant: null
+source: tfds
+sailor_pool_train_jsonl: null
+sailor_pool_eval_jsonl: null
+
+# split and sampling
+train_frac: 0.9
+num_trajs: -1
+num_examples: -1
+batch_size: 32
+shuffle: True
+
+# sequence slicing
+data_type: n_step
+seq_len: 8            # will be overridden by trainer configs
+shift: 1
+pad_dataset: False
+
+# observation handling
+image_obs: ${env.image_obs}
+image_shape: ${env.image_shape}
+use_images: False
+drop_images_after_obs: False
+
+# caching / extras
+use_cache: False
+load_latent_actions: False
+embedding: False

@@ -1,0 +1,27 @@
+#!/bin/bash
+
+format_python() {
+    python -m black ${1}
+    python -m isort ${1}
+}
+
+add_file() {
+    git add ${1}
+}
+
+case "${1}" in
+  --about )
+    echo "Run format on cached files"
+    ;;
+  * )
+    # For all newly added or updated (changed / modified) files, run the format tool on entire file
+    for file in `git diff-index --cached --name-only --diff-filter=ACM HEAD`; do
+      if [[ $file == *.py ]]; then
+        format_python "${file}"
+      else
+        continue
+      fi
+      add_file "${file}"
+    done
+    ;;
+esac

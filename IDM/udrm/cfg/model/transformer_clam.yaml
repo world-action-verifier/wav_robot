@@ -1,0 +1,11 @@
+idm:
+  # embed to same dimension as transformer
+  input_embed_dim: ${encoder.dim_model}
+    
+fdm:
+  # decoder uses its own dim_model, keep input embeddings aligned with decoder
+  input_embed_dim: ${decoder.dim_model}
+  
+defaults:
+  - clam
+  - _self_

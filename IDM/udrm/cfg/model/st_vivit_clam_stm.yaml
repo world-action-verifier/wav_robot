@@ -1,0 +1,21 @@
+FDM_TYPE: SpaceTimeFDM
+IDM_TYPE: SpaceTimeIDM
+use_stm: False
+use_adaln: False
+
+idm:
+  use_dino: False
+  use_cnn_tokenizer: False
+  patch_size: 16
+  seq_len: ${data.seq_len}
+  add_action_token: True
+  concatenate_gripper_state: ${model.concatenate_gripper_state}
+
+fdm:
+  patch_size: 16
+  seq_len: ${data.seq_len}
+  concatenate_gripper_state: ${model.concatenate_gripper_state}
+
+defaults:
+  - clam
+  - _self_

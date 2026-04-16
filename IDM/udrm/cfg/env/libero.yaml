@@ -1,0 +1,31 @@
+env_name: libero
+env_id: libero_all
+
+# tfds group and dataset names (after zarr->tfds conversion)
+dataset_name: liberotfds
+datasets:
+  - libero_all
+dataset_split: [1]
+
+# optional labelled dataset placeholders (unused for zarr-only workflows)
+action_labelled_dataset: []
+action_labelled_dataset_split: []
+
+# derived names for logging (kept for consistency)
+ds_name: ${fix_ds_name:${env.datasets},${env.dataset_name},${env.dataset_split}}
+al_ds_name: ${fix_ds_name:${env.action_labelled_dataset},${env.dataset_name},${env.action_labelled_dataset_split}}
+
+image_obs: True
+
+# TODO: not used
+task_dim: 4
+max_episode_steps: 100
+action_dim: 7
+image_shape: [128, 128]
+
+n_frame_stack: 1
+action_repeat: 1
+
+defaults:
+  - base
+  - _self_

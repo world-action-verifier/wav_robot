@@ -1,0 +1,28 @@
+env_name: robomimic
+env_id: can
+
+# Placeholders to satisfy trainer interfaces; ignored by sailor_pool source.
+dataset_name: sailor_pool
+datasets:
+  - pool
+dataset_split: [1]
+
+# optional labelled dataset placeholders
+action_labelled_dataset: []
+action_labelled_dataset_split: []
+
+ds_name: sailor_pool
+al_ds_name: sailor_pool
+
+image_obs: False
+task_dim: 3
+max_episode_steps: 400
+action_dim: 7
+image_shape: [64, 64]
+
+n_frame_stack: 1
+action_repeat: 1
+
+defaults:
+  - base
+  - _self_

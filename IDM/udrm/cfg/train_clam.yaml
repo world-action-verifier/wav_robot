@@ -1,0 +1,43 @@
+num_updates: 500_000  # total training iterations
+log_terminal_every: 20_000  # terminal logging interval (steps)
+run_eval_rollouts: False  # whether to run evaluation rollouts
+log_rollout_videos: False  # whether to log rollout videos
+
+joint_action_decoder_training: False  # whether to jointly train the action decoder
+num_labelled_trajs: 50  # number of trajectories with action labels
+train_action_decoder_every: 2  # action-decoder training interval (steps)
+action_decoder_bs: 128  # action decoder batch size
+action_decoder_loss_weight: 1.0  # decoder loss weight
+# Freeze CLAM after training, then train action decoder to evaluate latent-action/action alignment
+post_action_decoder_training: True
+post_action_decoder_steps: 5000
+post_action_decoder_log_every: 200
+# Train only the post-hoc action decoder (skip main training)
+post_action_decoder_only: False
+
+# optimizer for action_decoder
+decoder_optimizer:
+  name: 'AdamW'  # decoder optimizer type
+  params:
+    lr: 1e-3  # learning rate
+    eps: 1e-5  # numerical stability term
+    weight_decay: 0.01  # weight decay
+    betas: [0.9, 0.999]  # AdamW momentum parameters
+
+data: 
+  data_type: n_step  # data type (n-step trajectories)
+  seq_len: ${eval:${model.context_len} + ${model.fdm.k_step_pred}}  # sequence length = context steps + prediction steps
+
+name: clam  # trainer name
+base_hp_name: AL-${env.al_ds_name}_nut-${data.num_trajs}_la-${model.la_dim}_d-${env.ds_name}_vq-${model.idm.quantize_la}_dist-${model.distributional_la}_kl-${model.kl_loss_weight}_l-${data.seq_len}_s-${seed}  # experiment name template
+
+# extra config when we have joint action decoder training
+joint_extra: nt-${num_labelled_trajs}_te-${train_action_decoder_every}_adw-${action_decoder_loss_weight}  # suffix fields for joint training runs
+hp_name: ${resolve_clam_name:${base_hp_name},${joint_action_decoder_training},${joint_extra},${model.idm.quantize_la},${model.idm.vq.hp_name}}  # final experiment name
+
+defaults:
+  - base  # base config
+  - model: clam  # model config
+  - modules/encoder: mlp  # encoder module
+  - modules/decoder: mlp  # decoder module
+  - _self_  # keep local overrides
