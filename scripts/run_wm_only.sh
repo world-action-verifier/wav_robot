@@ -82,7 +82,7 @@ print(json.dumps(payload))
 PY
 )"
 
-CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}" python3 train_sailor.py \
+CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}" python3 train_wm.py \
   --configs cfg_dp_mppi "${SUITE}" \
   --task "${SUITE}__${TASK}" \
   --num_exp_trajs "${NUM_EXP_TRAJS:-50}" \
