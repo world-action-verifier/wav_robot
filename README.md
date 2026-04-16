@@ -21,7 +21,7 @@ Note that this is a minimal version; we will update it with a broader range of d
 
 This repo has two dependency groups:
 
-1. **Core WM pipeline** (main scripts)
+1. **Core WM pipeline** (main scripts, built upon [SAILOR](https://github.com/arnavkj1995/SAILOR))
 2. **IDM training stack** (`./IDM`)
 
 
