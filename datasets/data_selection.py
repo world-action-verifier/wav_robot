@@ -18,6 +18,7 @@ import types
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
+from datasets.episode_io import action_dim, load_rollout
 
 __all__ = [
     "SelectionRequest",
@@ -122,9 +123,7 @@ def load_episode(ref: Dict[str, Any], **loader_kwargs) -> Optional[Dict[str, np.
         return None
 
     if source_type == "dp_rollout_npz":
-        with np.load(file_path, allow_pickle=False) as handle:
-            episode = {k: handle[k] for k in handle.files}
-        return _normalize_episode_fields(episode)
+        return _normalize_episode_fields(load_rollout(ref))
 
     if source_type == "expert_hdf5":
         return _load_expert_episode(ref, file_path, **loader_kwargs)
@@ -317,9 +316,8 @@ def load_world_model(
     config.device = device
     config.state_only = state_only
 
-    action_dim = int(np.asarray(reference_episode["action"]).shape[-1])
-    config.num_actions = action_dim
-    config.action_dim = action_dim
+    config.num_actions = action_dim(reference_episode['action'])
+    config.action_dim = config.num_actions
     if "state" in reference_episode:
         state_shape = np.asarray(reference_episode["state"]).shape[1:]
         config.state_dim = int(state_shape[0])
@@ -334,15 +332,11 @@ def load_world_model(
         if clean.startswith("_wm."):
             state_dict[clean[len("_wm.") :]] = value
 
-    missing, unexpected = wm.load_state_dict(state_dict, strict=False)
     if len(state_dict) == 0:
         raise RuntimeError(
             f"{ckpt_path} contained no '_wm.' tensors; is it a Dreamer checkpoint?"
         )
-    if missing:
-        print(f"[data_selection] {ckpt_path.name}: {len(missing)} missing tensors (first: {missing[0]})")
-    if unexpected:
-        print(f"[data_selection] {ckpt_path.name}: {len(unexpected)} unexpected tensors")
+    wm.load_state_dict(state_dict, strict=True)
 
     wm.eval()
     return wm, config
@@ -475,12 +469,13 @@ def score_uncertainty(refs, request, **_) -> Tuple[Dict[str, float], Dict[str, A
     # Ensemble disagreement over the prior latent features.
 
     kwargs = request.strategy_kwargs
-    ckpt_paths = list(kwargs.get("wm_ckpt_paths", []))
+    ckpt_paths = list(dict.fromkeys(str(p) for p in kwargs.get("wm_ckpt_paths", [])))
     if len(ckpt_paths) < 2:
-        raise ValueError(
-            f"uncertainty requires >=2 checkpoints, got {len(ckpt_paths)}. "
-            "Increase snapshot history or pass wm_ckpt_paths explicitly."
-        )
+        if not ckpt_paths:
+            raise ValueError('uncertainty requires WM checkpoints')
+        scores, meta = score_random(refs, request)
+        meta.update(fallback='random', reason='fewer than two distinct WM snapshots')
+        return scores, meta
 
     if len(set(str(p) for p in ckpt_paths)) < 2:
         scores, meta = score_random(refs, request)
@@ -596,11 +591,10 @@ def score_idm(refs, request, **_) -> Tuple[Dict[str, float], Dict[str, Any]]:
                     obs_window = _idm_obs_window(data, t, context_len, idm_cfg, state_only)
                     if obs_window is None:
                         continue
-                    latent_action = idm_model(obs_window.to(idm_device))
-                    la = getattr(latent_action, "la", latent_action)
-                    if getattr(idm_cfg.model, "distributional_la", False):
-                        la = idm_model.reparameterize(la)
-                    a_hat = action_decoder(la).to(device).reshape(1, -1)
+                    a_hat = predict_idm_action(idm_model, action_decoder, idm_cfg,
+                                               obs_window.to(idm_device)).to(device)
+                    if a_hat.shape != data['action'][:, t].shape:
+                        raise ValueError(f'IDM action shape {a_hat.shape} does not match WM action')
 
                     state_t = {k: v[:, t] for k, v in post.items()}
                     pred = wm.dynamics.get_feat(wm.dynamics.img_step(state_t, a_hat))
@@ -644,10 +638,15 @@ def load_idm(idm_ckpt_path: str, idm_config_path: Optional[str], device: str):
     space.
     """
     import torch
+    import sys
     from omegaconf import OmegaConf
 
+    idm_package = str(pathlib.Path(__file__).resolve().parents[1] / 'IDM')
+    if idm_package not in sys.path:
+        sys.path.insert(0, idm_package)
+
     from udrm.models.mlp_policy import MLPPolicy
-    from udrm.models.utils.clam_utils import get_clam_cls
+    from udrm.models.utils.clam_utils import get_clam_cls, get_la_dim
 
     ckpt_path = pathlib.Path(idm_ckpt_path)
     if ckpt_path.is_dir():
@@ -673,8 +672,13 @@ def load_idm(idm_ckpt_path: str, idm_config_path: Optional[str], device: str):
 
     ckpt = torch.load(ckpt_file, map_location=device, weights_only=False)
 
-    clam_cls = get_clam_cls(cfg.model.name)
-    model = clam_cls(cfg.model, input_dim=cfg.model.input_dim)
+    clam_cls = get_clam_cls(cfg.name)
+    input_dim = ckpt.get('input_dim')
+    if input_dim is None:
+        input_dim = (3, *list(cfg.env.image_shape)) if cfg.env.image_obs else ckpt.get('state_dim')
+    if input_dim is None:
+        raise ValueError('IDM checkpoint lacks input_dim; re-save with the repaired trainer')
+    model = clam_cls(cfg.model, input_dim=input_dim, la_dim=get_la_dim(cfg))
     model.load_state_dict(_strip_compile_prefix(ckpt["model"]))
     model = model.to(device).eval()
 
@@ -683,8 +687,8 @@ def load_idm(idm_ckpt_path: str, idm_config_path: Optional[str], device: str):
             f"{ckpt_file} has no 'action_decoder'. Train it with "
             "post_action_decoder_training=True before using METHOD=idm."
         )
-    decoder = MLPPolicy(cfg=cfg.model.action_decoder, input_dim=cfg.model.la_dim,
-                        output_dim=cfg.model.action_dim)
+    decoder = MLPPolicy(cfg=cfg.model.action_decoder, input_dim=get_la_dim(cfg),
+                        output_dim=cfg.env.action_dim)
     decoder.load_state_dict(_strip_compile_prefix(ckpt["action_decoder"]))
     decoder = decoder.to(device).eval()
 
@@ -694,6 +698,27 @@ def load_idm(idm_ckpt_path: str, idm_config_path: Optional[str], device: str):
 def _strip_compile_prefix(params: Dict[str, Any]) -> Dict[str, Any]:
     """Drop the ``_orig_mod.`` prefix ``torch.compile`` leaves on state dicts."""
     return {k.replace("_orig_mod.", ""): v for k, v in params.items()}
+
+
+def predict_idm_action(model, decoder, cfg, observations):
+    """Decode the final observed transition, preserving the batch dimension."""
+    transformer = cfg.name in {'transformer_clam', 'st_vivit_clam', 'st_vivit_clam_stm',
+                               'nsvq_clam', 'tssm_clam'}
+    if getattr(cfg.model, 'concatenate_gripper_state', False):
+        raise NotImplementedError('IDM scoring with gripper-state concatenation needs explicit states')
+    if transformer:
+        timesteps = torch.arange(observations.shape[1], device=observations.device)[None]
+        timesteps = timesteps.expand(observations.shape[0], -1)
+        output = model.idm(observations, timesteps=timesteps, states=None)
+    else:
+        output = model.idm(observations)
+    la = output.la
+    if getattr(cfg.model, 'distributional_la', False):
+        # Deterministic posterior mean for repeatable selection scores.
+        la = la.chunk(2, dim=-1)[0]
+    if transformer:
+        la = la[:, -1]
+    return decoder(la)
 
 
 def _idm_obs_window(data, t: int, context_len: int, idm_cfg, state_only: bool):
@@ -713,7 +738,13 @@ def _idm_obs_window(data, t: int, context_len: int, idm_cfg, state_only: bool):
             return None
         # (B, T, H, W, C) -> (B, T, C, H, W) for the conv encoder
         frames = data[image_keys[0]][:, start : t + 2]
-        return frames.permute(0, 1, 4, 2, 3)
+        frames = frames.permute(0, 1, 4, 2, 3)
+        target = tuple(idm_cfg.env.image_shape)
+        if tuple(frames.shape[-2:]) != target:
+            flat = frames.flatten(0, 1)
+            flat = torch.nn.functional.interpolate(flat, size=target, mode='bilinear', align_corners=False)
+            frames = flat.reshape(frames.shape[0], frames.shape[1], *flat.shape[1:])
+        return frames
 
     return data["state"][:, start : t + 2]
 

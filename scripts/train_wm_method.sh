@@ -18,7 +18,7 @@ SUITE="${SUITE:-robomimic}"
 TASKS="${TASKS:-can}"
 SEED="${SEED:-0}"
 EXP_NAME="${EXP_NAME:-dp_collect_diverse_can_demos50_n30_noise0.10}"
-NUM_EXP_TRAJS="${NUM_EXP_TRAJS:-50}"
+NUM_EXP_TRAJS="${NUM_EXP_TRAJS:-180}"
 
 WM_ONLY_TRAIN_ITRS="${WM_ONLY_TRAIN_ITRS:-200000}"
 SAMPLE_START_ITR="${SAMPLE_START_ITR:-5000}"
@@ -69,7 +69,7 @@ case "${METHOD}" in
 esac
 
 for TASK in ${TASKS}; do
-  ROOT="scratch_dir/logs/${SUITE}__${TASK}/${EXP_NAME}/seed${SEED}/pools_v1"
+  ROOT="${POOLS_ROOT:-scratch_dir/logs/${SUITE}__${TASK}/${EXP_NAME}/seed${SEED}/pools_v1}"
   TRAIN_POOL_JSONL="${ROOT}/train_pool.jsonl"
   EVAL_POOL_JSONL="${ROOT}/eval_pool.jsonl"
   SAMPLE_SOURCE_POOL_JSONL="${ROOT}/sample_pool.jsonl"

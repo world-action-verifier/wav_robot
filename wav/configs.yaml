@@ -27,6 +27,7 @@ defaults:
   # Data params
   num_exp_trajs: -1 # To be specified when starting a new run
   num_exp_val_trajs: 1
+  use_official_demo_split: True
   normalize_state_actions: False
   image_size: 64
   obs_horizon: 2 # Number of observations to stack

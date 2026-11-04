@@ -5,7 +5,6 @@ import einops
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
-from vector_quantize_pytorch import FSQ, ResidualFSQ, ResidualVQ, VectorQuantize
 
 from udrm.models.base import BaseModel
 from udrm.models.utils.utils import (
@@ -17,11 +16,15 @@ from udrm.models.utils.utils import (
     make_upconv_net,
 )
 from udrm.utils.logger import log
-from udrm.models.simple_nsvq import SimpleNSVQ #Hayden
-from udrm.models.vqNSVQ import NSVQ #Hayden
 
 
 def get_vq_cls(cls_name):
+    if cls_name in {'residual_fsq', 'fsq', 'residual', 'ema'}:
+        from vector_quantize_pytorch import FSQ, ResidualFSQ, ResidualVQ, VectorQuantize
+    elif cls_name == 'simple_nsvq':
+        from udrm.models.simple_nsvq import SimpleNSVQ
+    elif cls_name == 'vqNSVQ':
+        from udrm.models.vqNSVQ import NSVQ
     if cls_name == "residual_fsq":
         return ResidualFSQ
     elif cls_name == "fsq":

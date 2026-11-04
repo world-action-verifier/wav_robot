@@ -70,11 +70,18 @@ class CLAMTrainer(OfflineTrainer):
 
         super().__init__(cfg)
         self.loss_fn = nn.MSELoss(reduction="none")
+        self.video_seq_ds = None
 
         if cfg.joint_action_decoder_training:
             log("loading labelled data for training action decoder")
-            cfg_cpy = copy.deepcopy(cfg)
-            self.labelled_dataloader = get_labelled_dataloader(cfg_cpy)
+            if str(getattr(cfg.data, 'source', 'tfds')) == 'sailor_pool':
+                # Every pool episode has actions. Rebatch complete windows, not
+                # timesteps, and reuse the train split without loading it twice.
+                self.labelled_dataloader = self.train_dataloader.unbatch().batch(
+                    cfg.action_decoder_bs, drop_remainder=True).prefetch(1)
+            else:
+                cfg_cpy = copy.deepcopy(cfg)
+                self.labelled_dataloader = get_labelled_dataloader(cfg_cpy)
 
             self.labelled_dataloader_train = (
                 self.labelled_dataloader.repeat().as_numpy_iterator()
@@ -83,6 +90,8 @@ class CLAMTrainer(OfflineTrainer):
         # ---------------------------------------------------------------------
         # [Fix] Video Evaluation Dataset Setup
         # ---------------------------------------------------------------------
+        if not cfg.log_rollout_videos and not cfg.run_eval_rollouts:
+            return
         # 1) Eval group path
         eval_ds_path = getattr(self.cfg.env, "eval_dataset_name", None)
         if eval_ds_path in (None, "null"):
@@ -137,110 +146,69 @@ class CLAMTrainer(OfflineTrainer):
         return action_decoder
 
     def train_idm_action_decoder_only(self):
-        log("IDM + action decoder training (freeze FDM)", "blue")
-        self.mse_loss_fn = nn.MSELoss(reduction="none")
+        """Supervised inverse training: update BOTH IDM and action decoder."""
+        self._train_action_decoder(int(self.cfg.num_updates), train_idm=True)
 
-        self.model.train()
-        if hasattr(self.model, "fdm"):
-            self.model.fdm.eval()
-        # self.action_decoder.train()
+    def run_posthoc_suite(self):
+        """Fit the persisted decoder used by downstream WAV selection."""
+        self._train_action_decoder(int(self.cfg.post_action_decoder_steps), train_idm=False)
 
-        # self.action_decoder.action_activation=null
-
-
-        # Optimizer for IDM
-        opt_cls = getattr(torch.optim, self.cfg.optimizer.name)
-        scheduler_cls = getattr(torch.optim.lr_scheduler, self.cfg.lr_scheduler.name)
-        self.idm_optimizer = opt_cls(
-            self.model.idm.parameters(), **self.cfg.optimizer.params
-        )
-        self.idm_scheduler = scheduler_cls(
-            self.idm_optimizer, **self.cfg.lr_scheduler.params
-        )
-
+    def _train_action_decoder(self, num_steps, train_idm=False):
+        if num_steps < 1:
+            raise ValueError('Action decoder training requires at least one update')
+        if not hasattr(self, 'action_decoder'):
+            raise ValueError('Enable post_action_decoder_training to create an action decoder')
+        flags = [(p, p.requires_grad) for p in self.model.parameters()]
+        model_training, decoder_training = self.model.training, self.action_decoder.training
+        self.model.eval()
+        for p in self.model.parameters():
+            p.requires_grad_(False)
+        params = list(self.action_decoder.parameters())
+        if train_idm:
+            self.model.idm.train()
+            for p in self.model.idm.parameters():
+                p.requires_grad_(True)
+            params += list(self.model.idm.parameters())
+        self.action_decoder.train()
+        self.action_decoder_optimizer = getattr(torch.optim, self.cfg.decoder_optimizer.name)(
+            params, **self.cfg.decoder_optimizer.params)
         train_iter = self.train_dataloader.repeat().as_numpy_iterator()
         eval_iter = self.eval_dataloader.repeat().as_numpy_iterator()
-        num_eval_batches = int(getattr(self, "num_eval_batches", 0))
-
-        num_steps = int(getattr(self.cfg, "num_updates", 50000))
-        log_every = int(getattr(self.cfg, "post_action_decoder_log_every", 100))
-        save_every = int(getattr(self.cfg, "save_every", 0))
-        eval_batches = int(getattr(self.cfg, "post_action_decoder_eval_batches", -1))
-        if eval_batches <= 0:
-            eval_batches = num_eval_batches
-
-        for step in range(num_steps):
-            self.train_step = step
-            batch_np = next(train_iter)
-            batch_np = to_device(batch_np, self.device)
-            batch = Batch(**batch_np)
-
-            self.idm_optimizer.zero_grad()
-            # self.action_decoder_optimizer.zero_grad()
-
-            autocast_ctx = (
-                torch.amp.autocast(device_type=self.device.type)
-                if self.device.type == "cuda"
-                else contextlib.nullcontext()
-            )
-            with autocast_ctx:
-                loss, metrics = self.compute_action_decoder_loss(
-                    batch, train=True, freeze_model=False, step = step
-                )
-
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(
-                self.model.idm.parameters(), max_norm=self.cfg.clip_grad_norm
-            )
-
-            self.idm_optimizer.step()
-
-            if hasattr(self, "idm_scheduler"):
-                self.idm_scheduler.step()
-            # if hasattr(self, "action_decoder_scheduler"):
-            #     self.action_decoder_scheduler.step()
-
-
-            if step % log_every == 0:
-                log_metrics = dict(metrics)
-                log_metrics["step"] = step
-
-                if step % 3000 == 0:
-                    eval_losses = []
-                    for _ in range(eval_batches):
-                        eval_np = next(eval_iter)
-                        eval_np = to_device(eval_np, self.device)
-                        eval_batch = Batch(**eval_np)
-                        with torch.no_grad():
-                            eval_loss, _ = self.compute_action_decoder_loss(
-                                eval_batch, train=False, freeze_model=False
-                            )
-                        eval_losses.append(eval_loss.item())
-
-                    if eval_losses:
-                        log_metrics["eval_action_decoder_loss"] = float(
-                            sum(eval_losses) / len(eval_losses)
-                        )
-
-                self.log_to_wandb(
-                    log_metrics, prefix="idm_action_decoder/", step=step + 1
-                )
-                log(f"idm_action_decoder step: {step}, {metrics}")
-
-            if save_every > 0 and ((step + 1) % save_every == 0):
-                ckpt_metrics = {"action_decoder_loss": float(loss.detach().item())}
-                self.save_model(
-                    ckpt_dict=self.save_dict,
-                    metrics=ckpt_metrics,
-                    iter=step + 1,
-                )
-
-        # Final safeguard save so downstream WM selection always has latest.pkl.
-        self.save_model(
-            ckpt_dict=self.save_dict,
-            metrics={"action_decoder_loss": float(loss.detach().item())},
-            iter=num_steps,
-        )
+        log_every = max(1, int(self.cfg.post_action_decoder_log_every))
+        save_every = int(self.cfg.save_every)
+        try:
+            for step in range(num_steps):
+                batch = Batch(**to_device(next(train_iter), self.device))
+                self.action_decoder_optimizer.zero_grad(set_to_none=True)
+                loss, _ = self.compute_action_decoder_loss(batch)
+                if not torch.isfinite(loss):
+                    raise FloatingPointError('Non-finite action decoder loss')
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(params, self.cfg.clip_grad_norm)
+                self.action_decoder_optimizer.step()
+                if step % log_every == 0 or step == num_steps - 1:
+                    self.model.idm.eval()
+                    self.action_decoder.eval()
+                    with torch.no_grad():
+                        eval_batch = Batch(**to_device(next(eval_iter), self.device))
+                        eval_loss, _ = self.compute_action_decoder_loss(eval_batch)
+                    metrics = dict(action_decoder_loss=float(loss.item()),
+                                   eval_action_decoder_loss=float(eval_loss.item()))
+                    self.log_to_wandb(metrics, prefix='action_decoder/', step=step + 1)
+                    log(f'action_decoder step {step + 1}: {metrics}')
+                    self.action_decoder.train()
+                    if train_idm:
+                        self.model.idm.train()
+                if save_every > 0 and (step + 1) % save_every == 0:
+                    self.save_model(self.save_dict, {'action_decoder_loss': float(loss.item())},
+                                    iter=int(self.train_step) + step + 1)
+            self.save_model(self.save_dict, {'action_decoder_loss': float(loss.item())},
+                            iter=int(self.train_step) + num_steps)
+        finally:
+            for parameter, required in flags:
+                parameter.requires_grad_(required)
+            self.model.train(model_training)
+            self.action_decoder.train(decoder_training)
 
     # Initialize model; when load_from_ckpt is enabled, load from ckpt_file and ckpt_step
     def setup_model(self):
@@ -273,9 +241,9 @@ class CLAMTrainer(OfflineTrainer):
             self.action_decoder_optimizer = opt_cls(
                 self.action_decoder.parameters(), **self.cfg.decoder_optimizer.params
             )
-            self.action_decoder_scheduler = scheduler_cls(
-                self.action_decoder_optimizer, **self.cfg.lr_scheduler.params
-            )
+            decoder_schedule = getattr(self.cfg, 'decoder_lr_scheduler', None) or self.cfg.lr_scheduler
+            self.action_decoder_scheduler = getattr(torch.optim.lr_scheduler, decoder_schedule.name)(
+                self.action_decoder_optimizer, **decoder_schedule.params)
         return clam_optimizer, clam_scheduler
 
     def compute_ad_loss(self, model, decoder, batch, loss_fn):
@@ -453,58 +421,25 @@ class CLAMTrainer(OfflineTrainer):
         metrics["total_loss"] = float(total_loss.detach().item())
         return metrics, total_loss
 
-    def compute_action_decoder_loss(
-        self,
-        batch,
-        train: bool = True,
-        freeze_model: bool = False,
-        step=None,
-    ):
-        # Keep backward compatibility with call sites that pass
-        # freeze_model/step during post action-decoder training.
+    def compute_action_decoder_loss(self, batch, train=True, freeze_model=False, step=None):
         del train, freeze_model, step
-        # (기존 코드와 동일하여 생략 가능하지만 전체 코드를 위해 포함)
-        obs = batch.observations
-        k_step = self.cfg.model.fdm.k_step_pred
-        if k_step > 1:
-            action_preds = []
-            for step in range(k_step):
-                end = self.cfg.model.context_len + 1 + step
-                obs_splice = obs[:, step:end]
-                if self.use_transformer:
-                    clam_output = self.model(obs_splice, timesteps=batch.timestep)
-                else:
-                    clam_output = self.model(obs_splice)
-                la = clam_output.la
-                if self.cfg.model.distributional_la:
-                    la = self.model.reparameterize(la)
-                action_pred = self.action_decoder(la)
-                action_preds.append(action_pred)
-            action_pred = torch.stack(action_preds, dim=1)
-            if self.use_transformer:
-                action_pred = action_pred[:, 0, :-1]
-                gt_actions = batch.actions[:, :-1]
-            else:
-                gt_actions = batch.actions[:, -2 : (-2 + k_step)]
+        if self.use_transformer:
+            output = self.model.idm(batch.observations, timesteps=batch.timestep,
+                                    states=batch.states)
+            la = output.la[:, 1:]
+            targets = batch.actions[:, :-1]
         else:
-            if self.use_transformer:
-                clam_output = self.model(
-                    obs, timesteps=batch.timestep, states=batch.states
-                )
-                la = clam_output.la[:, 1:]
-                action_pred = self.action_decoder(la)
-                gt_actions = batch.actions[:, :-1]
-            else:
-                clam_output = self.model(obs)
-                la = clam_output.la
-                action_pred = self.action_decoder(la)
-                gt_actions = batch.actions[:, self.cfg.model.context_len :].squeeze()
-
-        assert action_pred.shape == gt_actions.shape
-        gt_actions = to_device(gt_actions, self.device)
-        action_decoder_loss = self.action_decoder_loss_fn(action_pred, gt_actions).mean()
-        return action_decoder_loss, {"action_decoder_loss": action_decoder_loss.item()}
-
+            output = self.model.idm(batch.observations)
+            la = output.la
+            targets = batch.actions[:, self.cfg.model.context_len]
+        if self.cfg.model.distributional_la:
+            mean, logvar = la.chunk(2, dim=-1)
+            la = mean + torch.exp(0.5 * logvar) * torch.randn_like(mean) if self.action_decoder.training else mean
+        predictions = self.action_decoder(la)
+        if predictions.shape != targets.shape:
+            raise ValueError(f'Decoder shape {predictions.shape} != targets {targets.shape}')
+        loss = self.action_decoder_loss_fn(predictions, targets).mean()
+        return loss, {'action_decoder_loss': loss.item()}
 
     def compute_step_loss(self, batch, train: bool = True):
         if self.use_transformer:
@@ -646,12 +581,15 @@ class CLAMTrainer(OfflineTrainer):
 
     @property
     def save_dict(self):
-        state_dict = {"model": self.model.state_dict(), "optimizer": self.optimizer.state_dict()}
+        state_dict = super().save_dict
+        state_dict['scheduler'] = self.scheduler.state_dict()
         if self.cfg.joint_action_decoder_training or getattr(self.cfg, "post_action_decoder_training", False):
             if hasattr(self, "action_decoder"):
                 state_dict["action_decoder"] = self.action_decoder.state_dict()
             if hasattr(self, "action_decoder_optimizer"):
                 state_dict["action_decoder_opt"] = self.action_decoder_optimizer.state_dict()
+            if hasattr(self, 'action_decoder_scheduler'):
+                state_dict['action_decoder_scheduler'] = self.action_decoder_scheduler.state_dict()
         return state_dict
 
     def _ensure_cmap_lut(self, name: str = "magma"):

@@ -33,6 +33,8 @@ NUM_TRAJS="${NUM_TRAJS:--1}"
 NUM_UPDATES="${NUM_UPDATES:-50000}"
 SAVE_EVERY="${SAVE_EVERY:-5000}"
 USE_WANDB="${USE_WANDB:-False}"
+# true: FDM reconstruction does not update IDM; false: enable that gradient.
+DETACH_IDM_LATENTS="${DETACH_IDM_LATENTS:-true}"
 
 IMAGE_OBS="${IMAGE_OBS:-True}"
 DATA_USE_IMAGES="${DATA_USE_IMAGES:-${IMAGE_OBS}}"
@@ -40,7 +42,7 @@ DROP_IMAGES_AFTER_OBS="${DROP_IMAGES_AFTER_OBS:-True}"
 
 POOLS_ROOT_DEFAULT="scratch_dir/logs/${SUITE}__${TASK}/${EXP_NAME}/seed${SEED}/pools_v1"
 POOLS_ROOT="${POOLS_ROOT:-${POOLS_ROOT_DEFAULT}}"
-TRAIN_POOL_JSONL="${TRAIN_POOL_JSONL:-${POOLS_ROOT}/train_pool.jsonl}"
+TRAIN_POOL_JSONL="${TRAIN_POOL_JSONL:-${POOLS_ROOT}/idm_train_pool.jsonl}"
 EVAL_POOL_JSONL="${EVAL_POOL_JSONL:-${POOLS_ROOT}/eval_pool.jsonl}"
 
 EXTRA_ARGS="${EXTRA_ARGS:-}"
@@ -63,10 +65,11 @@ echo "SEQ_LEN=${SEQ_LEN} BATCH_SIZE=${BATCH_SIZE} NUM_UPDATES=${NUM_UPDATES}"
 echo
 
 CMD=(
-  python IDM/scripts/train_idm_action_decoder.py
+  python -m udrm.main
   --config-name "${CONFIG_NAME}"
   "env=${ENV_CONFIG}"
   "env.env_id=${TASK}"
+  "seed=${SEED}"
   "data.source=${DATA_SOURCE}"
   "data.sailor_pool_train_jsonl=${TRAIN_POOL_JSONL}"
   "data.sailor_pool_eval_jsonl=${EVAL_POOL_JSONL}"
@@ -79,6 +82,7 @@ CMD=(
   "data.use_images=${DATA_USE_IMAGES}"
   "data.drop_images_after_obs=${DROP_IMAGES_AFTER_OBS}"
   "use_wandb=${USE_WANDB}"
+  "model.fdm.detach_idm_latents=${DETACH_IDM_LATENTS}"
   "num_updates=${NUM_UPDATES}"
   "save_every=${SAVE_EVERY}"
 )
@@ -89,4 +93,4 @@ if [[ -n "${EXTRA_ARGS}" ]]; then
   CMD+=("${EXTRA_ARR[@]}")
 fi
 
-PYTHONPATH=IDM "${CMD[@]}"
+PYTHONPATH="${RELEASE_DIR}/IDM:${RELEASE_DIR}:${PYTHONPATH:-}" "${CMD[@]}"

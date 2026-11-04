@@ -133,7 +133,7 @@ def finalize_runtime_config(config) -> Tuple[Any, str, str]:
     config.wandb_exp_name = exp_name
     config.time_limit = config.env_time_limits[task]
     config.logdir = f"{config.scratch_dir}/logs/{exp_name}/seed{config.seed}"
-    config.datadir = os.path.join("datasets", f"{suite}_datasets")
+    config.datadir = getattr(config, 'datadir', None) or os.path.join("datasets", f"{suite}_datasets")
 
     if config.generate_highres_eval:
         config.high_res_render = True

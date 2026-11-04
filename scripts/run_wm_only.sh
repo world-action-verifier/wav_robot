@@ -85,7 +85,11 @@ PY
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}" python3 train_wm.py \
   --configs cfg_dp_mppi "${SUITE}" \
   --task "${SUITE}__${TASK}" \
+  --seed "${SEED:-0}" \
   --num_exp_trajs "${NUM_EXP_TRAJS:-50}" \
+  --num_exp_val_trajs "${NUM_EXP_VAL_TRAJS:-20}" \
+  --set use_official_demo_split True \
+  --set datadir "${DATADIR:-datasets/${SUITE}_datasets}" \
   --use_wandb "${USE_WANDB}" \
   --wandb_entity "${WANDB_ENTITY:-}" \
   --wandb_project "${WANDB_PROJECT:-SAILOR}" \

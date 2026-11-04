@@ -1,15 +1,18 @@
 from dataclasses import dataclass
 from itertools import repeat
-from typing import Dict
+from typing import Dict, Union
 
 import numpy as np
-from jaxtyping import Array, Float, Key, Union
+from jaxtyping import Float
+
+# Batch storage is NumPy; annotations must not require an unused JAX runtime.
+Array = np.ndarray
 
 BT = Float[Array, "B T"]
 BTD = Float[Array, "B T D"]
 BTHWC = Float[Array, "B T H W C"]
 BTX = Union[BTD, BTHWC]
-PRNGKeyDict = Dict[str, Key]
+PRNGKeyDict = Dict[str, np.ndarray]
 
 
 def normalize_obs(obs: np.ndarray) -> np.ndarray:

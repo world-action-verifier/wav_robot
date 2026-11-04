@@ -16,6 +16,7 @@ from tqdm import trange
 from environments.robomimic.constants import STATE_SHAPE_META
 from wav.classes.rollout_utils import get_act_stacked, get_obs_stacked
 from wav.dreamer.tools import add_to_cache
+from datasets.episode_io import official_demo_split
 
 
 class HiddenPrints:
@@ -237,8 +238,13 @@ def get_train_val_datasets(config):
     f = h5py.File(dataset_path, "r")
     demos = list(f["data"].keys())
 
-    # Assert that we have enough data
-    assert num_train_trajs + num_val_trajs <= len(demos), "Not enough expert data"
+    if getattr(config, 'use_official_demo_split', True):
+        train_demos, valid_demos = official_demo_split(f, num_train_trajs, num_val_trajs)
+    else:
+        assert num_train_trajs >= 0 and num_val_trajs >= 0
+        assert num_train_trajs + num_val_trajs <= len(demos), 'Not enough expert data'
+        train_demos = demos[:num_train_trajs]
+        valid_demos = demos[num_train_trajs:num_train_trajs + num_val_trajs]
 
     obs_keys = shape_meta["obs"].keys()
     pixel_keys = sorted([key for key in obs_keys if "image" in key])
@@ -268,8 +274,7 @@ def get_train_val_datasets(config):
     action_dim = first_demo["actions"].shape[1]
 
     # Fill the Train Dataset
-    for i in range(num_train_trajs):
-        demo = demos[i]
+    for i, demo in enumerate(train_demos):
         add_traj_to_cache(
             i, demo, train_eps, f, config, pixel_keys, state_keys, norm_dict
         )
@@ -277,8 +282,7 @@ def get_train_val_datasets(config):
     print("Loaded", len(train_eps.keys()), "training episodes")
 
     # Fill the Val Dataset
-    for i in range(num_train_trajs, num_train_trajs + num_val_trajs):
-        demo = demos[i]
+    for i, demo in enumerate(valid_demos):
         add_traj_to_cache(i, demo, val_eps, f, config, pixel_keys, state_keys)
 
     print("Loaded", len(val_eps.keys()), "validation episodes")

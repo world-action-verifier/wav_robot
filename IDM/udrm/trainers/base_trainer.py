@@ -120,7 +120,7 @@ class BaseTrainer:
         # load datasets
 
         # Hayden - using seperated eval dataset
-        if cfg.env.eval_datasets != "null":
+        if cfg.env.eval_datasets not in (None, "null"):
             self.train_ds, self.eval_ds = get_dataloader(
                 cfg,
                 dataset_names=cfg.env.datasets,              # train datasets
@@ -177,7 +177,7 @@ class BaseTrainer:
         if self.cfg.eval_every != -1:
             self.eval_every = self.cfg.eval_every
         elif self.cfg.num_evals != -1:
-            self.eval_every = int(self.cfg.num_updates // self.cfg.num_evals)
+            self.eval_every = max(1, int(self.cfg.num_updates // self.cfg.num_evals))
         elif self.cfg.eval_perc != -1:
             self.eval_every = int(self.cfg.num_updates * self.cfg.eval_perc)
         else:
@@ -237,11 +237,15 @@ class BaseTrainer:
             self.scaler = GradScaler()
 
         #Hayden - eval dataset
-        tmp_iter = self.eval_dataloader.as_numpy_iterator()
+        eval_limit = int(getattr(self.cfg, 'num_eval_steps', -1))
+        eval_dataset = self.eval_dataloader.take(eval_limit) if eval_limit > 0 else self.eval_dataloader
+        tmp_iter = eval_dataset.as_numpy_iterator()
         num_eval_batches = 0
         for _ in tmp_iter:
             num_eval_batches += 1
         self.num_eval_batches = num_eval_batches
+        if not num_eval_batches:
+            raise ValueError('Evaluation dataset has no batches')
         log(f"num_eval_batches: {self.num_eval_batches}")
 
         self.eval_repeat_dataloader = self.eval_dataloader.repeat()
@@ -355,5 +359,7 @@ class BaseTrainer:
         state_dict = {
             "model": unwrapped_model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
+            "input_dim": self.obs_shape,
+            "state_dim": self.obs_shape if isinstance(self.obs_shape, int) else None,
         }
         return state_dict

@@ -573,7 +573,10 @@ class SpaceTimeFDM(BaseModel):
         # print("idm_output.la.shape:", idm_output.la.shape)
         # idm_output.la.shape: torch.Size([1, 3, 16])
         # [B, T-1, la_dim]
-        la = idm_output.la[:, 1:].detach() # ([1, 2, 16])
+        # Optionally let reconstruction update the inverse latent encoder.
+        la = idm_output.la[:, 1:]
+        if getattr(self.cfg, "detach_idm_latents", True):
+            la = la.detach()
         # la = torch.rand_like(la) # only fdm
 
         # [B, T, N, E]
@@ -731,6 +734,8 @@ class SpaceTimeFDM_STM(BaseModel):
 
         # [B, T-1, la_dim]
         la = idm_output.la[:, 1:]
+        if getattr(self.cfg, "detach_idm_latents", True):
+            la = la.detach()
         # print("[FDM] la.shape:", la.shape) # [128, 4, 16]
 
         # patchify expects channel-last
