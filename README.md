@@ -1,11 +1,19 @@
 <div align="center">
 <h2 align="center">
-  World Action Verifier <br> 
+  World Action Verifier <br>
   Self-Improving World Models via Forward-Inverse Asymmetry
 </h2>
 
-<a href='https://arxiv.org/abs/2604.01985'><img src='https://img.shields.io/badge/ArXiv-2510.10125-red'></a> 
-<a href='https://world-action-verifier.github.io/'><img src='https://img.shields.io/badge/Project-Page-Blue'></a> 
+<p>
+  Yuejiang Liu<sup>*</sup>, Fan Feng<sup>*</sup>, Lingjing Kong<sup>*</sup>,
+  Weifeng Lu<sup>*</sup>, Jinzhou Tang, Kun Zhang, Kevin Murphy, Chelsea Finn, Yilun Du
+</p>
+<p><sup>*</sup> Equal contribution</p>
+<p><strong>NeurIPS 2026</strong></p>
+
+<a href="https://arxiv.org/abs/2604.01985"><img src="https://img.shields.io/badge/arXiv-2604.01985-b31b1b" alt="arXiv"></a>
+<a href="https://world-action-verifier.github.io/"><img src="https://img.shields.io/badge/Project-Website-blue" alt="Project website"></a>
+<a href="https://huggingface.co/ffeng1017/WAV-MMBench-Checkpoint"><img src="https://img.shields.io/badge/Hugging_Face-Checkpoints-yellow" alt="Hugging Face checkpoints"></a>
 
 </div>
 
@@ -210,7 +218,7 @@ interventions, and MPC on all 20 tasks. Offline evaluation uses context 8,
 horizon 16, 8 denoising steps, and context noise 0.1. MPC uses three full
 episodes per task with planning horizon 32 and replanning every 16 steps.
 
-### Base and Combined checkpoints
+### Checkpoints
 
 Download the tokenizer and dynamics files for each variant from the original
 authors' [Hugging Face model repository](https://huggingface.co/nicklashansen/mmbench2-models).
@@ -224,6 +232,12 @@ Use the two files from the same variant together:
 These links use the release revision from our experiments. Coverage-aware, used
 for continuation training, is available in the same model repository under
 [coverage_aware](https://huggingface.co/nicklashansen/mmbench2-models/tree/b7f7b222526d557f80bf3bcf84ab824cb14f94b0/coverage_aware).
+
+The model pairs used in our MMBench2 experiments are hosted in
+[WAV-MMBench-Checkpoint](https://huggingface.co/ffeng1017/WAV-MMBench-Checkpoint).
+The repository contains `default`, `random-pool50`, `ur-norm-pool50`,
+`uf-norm-pool50`, and `us-norm-pool50`, each with a tokenizer and dynamics file.
+Use the two files from the same directory together.
 
 ## Tests
 
@@ -243,21 +257,25 @@ long training runs are separate experiments.
 
 ---
 
-## Acknowledgement
+## Acknowledgments
 
-This codebase is built upon [SAILOR](https://github.com/arnavkj1995/SAILOR) and [CLAM](https://github.com/clamrobot/clam). We thank the authors for their open-source contributions.
+We thank [SAILOR](https://github.com/arnavkj1995/SAILOR),
+[MMBench2](https://github.com/nicklashansen/mmbench2), and
+[CLAM](https://github.com/clamrobot/clam) for their open-source code and resources.
 
+## Citation
 
-## Bibtex 
-If you find our work helpful, please leave us a star and cite our paper. Thank you!
-```
-@article{liu2026wav, 
-      title={World Action Verifier: Self-Improving World Models via Forward-Inverse Asymmetry}, 
-      author={Yuejiang Liu and Fan Feng and Lingjing Kong and Weifeng Lu and Jinzhou Tang and Kun Zhang and Kevin Murphy and Chelsea Finn and Yilun Du}, 
-      year={2026}, 
-      eprint={2604.01985}, 
-      archivePrefix={arXiv}, 
-      primaryClass={cs.LG}, 
-      url={https://arxiv.org/abs/2604.01985}, 
+If you use this code, please cite our paper:
+
+```bibtex
+@inproceedings{liu2026wav,
+  title={World Action Verifier: Self-Improving World Models via Forward-Inverse Asymmetry},
+  author={Liu, Yuejiang and Feng, Fan and Kong, Lingjing and Lu, Weifeng and Tang, Jinzhou and Zhang, Kun and Murphy, Kevin and Finn, Chelsea and Du, Yilun},
+  booktitle={Advances in Neural Information Processing Systems},
+  year={2026},
+  eprint={2604.01985},
+  archivePrefix={arXiv},
+  primaryClass={cs.LG},
+  url={https://arxiv.org/abs/2604.01985}
 }
 ```
