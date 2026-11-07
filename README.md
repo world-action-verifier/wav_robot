@@ -210,7 +210,7 @@ for continuation training, is available in the same model repository under
 
 The model pairs used in our MMBench2 experiments are hosted in
 [WAV-MMBench-Checkpoint](https://huggingface.co/ffeng1017/WAV-MMBench-Checkpoint).
-The repository contains `default`, `random-pool50`, `ur-norm-pool50`,
+The repository contains `default (WAV)`, `random-pool50`, `ur-norm-pool50`,
 `uf-norm-pool50`, and `us-norm-pool50`, each with a tokenizer and dynamics file.
 Use the two files from the same directory together.
 
