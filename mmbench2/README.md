@@ -118,9 +118,6 @@ complete episodes per task and checks their seeds and collection protocol.
 Use a trained setting from the table above, or `base`, `coverage_aware`, `combined`:
 
 ```bash
-python evaluate.py --variant wav-h4-d0125 --kind offline --task all
-python evaluate.py --variant wav-h4-d0125 --kind mpc --task all
-python evaluate.py --online --variant wav-cem-alpha075 --kind offline --task all
 python evaluate.py --online --variant wav-cem-alpha075 --kind mpc --task all
 ```
 
