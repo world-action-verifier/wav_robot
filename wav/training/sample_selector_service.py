@@ -78,8 +78,6 @@ class SampleSelectorService:
                 ]
                 if len(hist) == 0:
                     hist = [str(current_ckpt)]
-                while len(hist) < max(2, ensemble_size):
-                    hist.append(hist[-1])
                 strategy_kwargs["wm_ckpt_paths"] = hist[:ensemble_size]
                 strategy_kwargs["ensemble_size"] = ensemble_size
         elif strategy == "idm":
@@ -132,78 +130,5 @@ class SampleSelectorService:
         return True
 
     def load_pool_episodes_for_wm_local(self, trainer, pool_jsonl_path):
-        pool_jsonl_path = pathlib.Path(pool_jsonl_path)
-        if not pool_jsonl_path.exists():
-            return collections.OrderedDict()
-
-        with open(pool_jsonl_path, "r", encoding="utf-8") as f:
-            refs = [json.loads(line) for line in f if line.strip()]
-
-        cache = collections.OrderedDict()
-        expert_refs = []
-        npz_refs = []
-        for ref in refs:
-            if ref.get("source_type") == "dp_rollout_npz":
-                npz_refs.append(ref)
-            elif ref.get("source_type") == "expert_hdf5":
-                expert_refs.append(ref)
-
-        for ref in npz_refs:
-            npz_path = pathlib.Path(ref["file_path"])
-            if not npz_path.exists():
-                continue
-            with np.load(npz_path, allow_pickle=False) as ep:
-                episode = {k: ep[k] for k in ep.files}
-            episode = self.normalize_episode_fields_local(episode)
-            cache[ref["episode_id"]] = episode
-
-        if expert_refs:
-            suite, _task = trainer.config.task.split("__", 1)
-            if suite != "robomimic":
-                return cache
-            from environments.robomimic.utils import add_traj_to_cache, create_shape_meta
-
-            shape_meta = create_shape_meta(
-                img_size=trainer.config.image_size, include_state=True
-            )
-            obs_keys = shape_meta["obs"].keys()
-            pixel_keys = sorted([key for key in obs_keys if "image" in key])
-            state_keys = sorted([key for key in obs_keys if "image" not in key])
-
-            by_file = collections.defaultdict(list)
-            for ref in expert_refs:
-                by_file[ref["file_path"]].append(ref)
-
-            for file_path, file_refs in by_file.items():
-                file_path = pathlib.Path(file_path)
-                if not file_path.exists():
-                    continue
-                with h5py.File(file_path, "r") as f:
-                    for idx, ref in enumerate(file_refs):
-                        demo_key = ref.get("demo_key")
-                        if demo_key is None or demo_key not in f["data"]:
-                            continue
-                        add_traj_to_cache(
-                            traj_id=f"{demo_key}_{idx}",
-                            demo=demo_key,
-                            cache=cache,
-                            f=f,
-                            config=trainer.config,
-                            pixel_keys=pixel_keys,
-                            state_keys=state_keys,
-                            norm_dict=None,
-                        )
-                        key = f"exp_traj_{demo_key}_{idx}"
-                        if key in cache:
-                            cache[key] = self.normalize_episode_fields_local(cache[key])
-        return cache
-
-    def normalize_episode_fields_local(self, ep):
-        if "action" in ep:
-            if "base_action" not in ep:
-                ep["base_action"] = np.zeros_like(ep["action"])
-            if "residual_action" not in ep:
-                ep["residual_action"] = np.zeros_like(ep["action"])
-        if "success" not in ep and "reward" in ep:
-            ep["success"] = np.zeros_like(ep["reward"], dtype=bool)
-        return ep
+        from wav.runtime.dataset_loader import load_pool_episodes_for_wm
+        return load_pool_episodes_for_wm(trainer.config, pool_jsonl_path)

@@ -1,0 +1,40 @@
+# Can pilot: two runs differ only in model.la_l1_weight (0 versus 0.1).
+defaults:
+  - train_st_vivit_clam_stm
+  - override env: robomimic_sailor
+  - _self_
+
+num_updates: 100000
+joint_action_decoder_training: True
+train_action_decoder_every: 2
+action_decoder_bs: 128
+action_decoder_loss_weight: 1.0
+post_action_decoder_training: False
+use_wandb: False
+enable_jit: False
+eval_every: 5000
+log_terminal_every: 500
+save_every: 5000
+pilot_name: joint_l1_0
+pilot_root: ${oc.env:WAV_PILOT_ROOT,./scratch_dir/idm_can_joint}
+pilot_smoke: False
+diagnostic_max_batches: null
+data:
+  source: sailor_pool
+  batch_size: 32
+  seq_len: 3
+  num_trajs: -1
+model:
+  la_dim: 16
+  la_l1_weight: 0.0
+decoder_optimizer:
+  params:
+    lr: 0.0003
+decoder_lr_scheduler:
+  name: CosineAnnealingLR
+  params:
+    T_max: 50000
+    eta_min: 0.00003
+hydra:
+  run:
+    dir: ${pilot_root}/runs/${pilot_name}

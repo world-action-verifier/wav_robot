@@ -58,6 +58,21 @@ def make_env(config):
 
 def build_train_envs(config):
     suite, _task = config.task.split("__", 1)
+    if suite == 'robomimic' and getattr(config, 'wm_only_mode', False):
+        # Offline WM optimization needs spaces, not ten rendering simulators.
+        # A DP checkpoint is mandatory here; missing-DP pretraining needs live envs.
+        if not config.dp['pretrained_ckpt']:
+            raise ValueError('WM-only mode requires a pretrained DP checkpoint')
+        import gym
+        import numpy as np
+        from types import SimpleNamespace
+        spaces = {'state': gym.spaces.Box(-np.inf, np.inf, (config.state_dim,), dtype=np.float32)}
+        if not config.state_only:
+            for key in ['agentview_image', 'robot0_eye_in_hand_image']:
+                spaces[key] = gym.spaces.Box(0, 255, (config.image_size, config.image_size, 3), dtype=np.uint8)
+        return SimpleNamespace(observation_space=gym.spaces.Dict(spaces),
+                               action_space=gym.spaces.Box(-1, 1, (config.action_dim,), dtype=np.float32),
+                               close=lambda: None)
     if suite in ["robomimic", "robocasa"]:
         return ConcurrentEnvs(config=config, env_make=make_env, num_envs=config.num_envs)
     if suite == "maniskill":

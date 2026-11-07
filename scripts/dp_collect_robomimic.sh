@@ -42,7 +42,7 @@ for TASK in ${TASKS}; do
   RUN_NAME="dp_collect_diverse_${TASK}_demos${NUM_EXP_TRAJS}_n${ROLLOUT_SNAPSHOT_COUNT}_noise${ROLLOUT_SNAPSHOT_NOISE_STD}"
   echo "=== Collecting diverse DP rollouts | ${SUITE}__${TASK} | ${RUN_NAME} ==="
 
-  CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES}" python3 train_sailor.py \
+  CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES}" python3 train_wm.py \
     --configs cfg_dp_mppi "${SUITE}" \
     --task "${SUITE}__${TASK}" \
     --num_exp_trajs "${NUM_EXP_TRAJS}" \

@@ -5,6 +5,7 @@ import pathlib
 import h5py
 import numpy as np
 from termcolor import cprint
+from datasets.episode_io import load_rollout
 
 
 def load_expert_datasets(config):
@@ -63,10 +64,7 @@ def load_pool_episodes_for_wm(config, pool_jsonl_path):
 
     for ref in npz_refs:
         npz_path = pathlib.Path(ref["file_path"])
-        if not npz_path.exists():
-            continue
-        with np.load(npz_path, allow_pickle=False) as ep:
-            episode = {k: ep[k] for k in ep.files}
+        episode = load_rollout(ref)
         cache[ref["episode_id"]] = _normalize_episode_fields(episode)
 
     if expert_refs:

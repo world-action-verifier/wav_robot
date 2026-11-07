@@ -664,7 +664,11 @@ class MLP(nn.Module):
             self._shape = (1,)
         act = getattr(torch.nn, act)
         self._dist = dist
-        self._std = std if isinstance(std, str) else torch.tensor((std,), device=device)
+        if isinstance(std, str):
+            self._std = std
+        else:
+            # Follow module.to(device), without adding a new checkpoint key.
+            self.register_buffer("_std", torch.tensor((std,)), persistent=False)
         self._min_std = min_std
         self._max_std = max_std
         self._absmax = absmax

@@ -222,6 +222,10 @@ class OfflineTrainer(BaseTrainer):
                 self.scaler.update()
 
             self.scheduler.step()
+            if hasattr(self, 'action_decoder_scheduler') and (
+                self.train_step % self.cfg.train_action_decoder_every == 0
+            ):
+                self.action_decoder_scheduler.step()
 
             metrics["time/batch_load"] = batch_load_time
             metrics["time/update"] = time.time() - update_time

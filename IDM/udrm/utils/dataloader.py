@@ -16,7 +16,11 @@ import numpy as np
 from typing import List, Optional
 
 # import zarr
-import rlds
+try:
+    import rlds
+except ImportError:
+    # Pool training only needs sliding windows; reverb is optional.
+    rlds = None
 
 # NOTE: TFDS data dir is determined by data.data_dir in configs; no hard-coded path here.
 
@@ -43,11 +47,22 @@ def _read_jsonl(path: Path):
 
 def _load_sailor_episode_from_ref(ref):
     source_type = ref.get("source_type", "")
-    if source_type != "dp_rollout_npz":
+    if source_type not in {"dp_rollout_npz", "expert_hdf5"}:
         return None
     file_path = Path(ref.get("file_path", ""))
     if not file_path.exists():
         return None
+    if source_type == 'expert_hdf5':
+        import h5py
+        with h5py.File(file_path, 'r') as handle:
+            demo = handle['data'][ref['demo_key']]
+            obs = demo['obs']
+            state = np.concatenate([obs[k][()] for k in
+                                    ['robot0_eef_pos', 'robot0_eef_quat', 'robot0_gripper_qpos']], axis=-1)
+            return dict(observations=state.astype(np.float32),
+                        actions=demo['actions'][()].astype(np.float32),
+                        rewards=demo['rewards'][()].astype(np.float32),
+                        images=obs['agentview_image'][()])
     with np.load(file_path, allow_pickle=False) as ep:
         episode = {k: ep[k] for k in ep.files}
 
@@ -84,7 +99,7 @@ def _build_tf_episode_dataset_from_sailor_rows(rows, max_episodes=-1):
         if max_episodes != -1 and len(episodes) >= max_episodes:
             break
     if len(episodes) == 0:
-        raise ValueError("No valid dp_rollout_npz episodes found in sailor pool jsonl.")
+        raise ValueError("No valid episodes found in sailor pool jsonl.")
 
     first = episodes[0]
     obs_shape = first["observations"].shape

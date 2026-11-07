@@ -22,6 +22,8 @@ idm:
   distributional_la: ${model.distributional_la}
 
 fdm: 
+  # SpaceTime FDM: false lets reconstruction gradients update IDM latents.
+  detach_idm_latents: true
   la_dim: ${model.la_dim}
   context_len: ${model.context_len}
   input_encoder: ${encoder}
