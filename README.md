@@ -165,20 +165,20 @@ predictor, separate from the CLAM used in the robot experiments.
 
 ### Offline WAV
 
-Each task has a pool of 250 trajectories: 50 each from random, curiosity,
-expert, human, and no-op collection. WAV selects the 50 trajectories with the
-largest disagreement between observed futures and WM rollouts under IDM-inferred
-actions. Random and u_r/u_f/u_s select 50 trajectories from the same pool;
-Combined local uses all 250, with released Base, Coverage-aware, and Combined
-models as additional references.
+- **Pool:** 250 trajectories per task, 50 each from random, curiosity, expert,
+  human, and no-op collection.
+- **Selection:** Keep the top 50 by disagreement between observed futures and
+  WM rollouts under IDM-inferred actions.
+- **Baselines:** Random and u_r/u_f/u_s select 50 from the same pool; Combined
+  local uses all 250. Released Base, Coverage-aware, and Combined are references.
 
 ### Online WAV
 
-Online WAV uses CEM to find action sequences with high mismatch between proposed
-actions and actions recovered by the IDM from WM predictions, keeping both models
-frozen during collection. It collects 50 real-environment trajectories per task
-for subsequent WM training. We use **alpha=0.75**, sampling target tasks with
-probability 0.75 and background tasks with probability 0.25.
+- **Exploration:** CEM searches for action sequences with high mismatch between
+  proposed actions and IDM-recovered actions from WM predictions. Both models
+  remain frozen during collection.
+- **Data:** Collect 50 real-environment trajectories per task for WM training.
+- **Task sampling:** alpha=0.75 gives 75% target tasks and 25% background tasks.
 
 ### Training and evaluation
 
