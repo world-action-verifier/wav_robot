@@ -165,45 +165,20 @@ predictor, separate from the CLAM used in the robot experiments.
 
 ### Offline WAV
 
-Each task has a common pool of 250 trajectories: 50 each from random,
-curiosity, expert, human, and no-op collection. Offline WAV infers actions from
-observed transitions, rolls the WM forward under those actions, and ranks each
-trajectory by its mean divergence from the observed future. It selects the 50
-highest-scoring trajectories per task.
-
-We use horizons 1, 4, and 8 with denoising d=0.125, plus horizon 4 with d=0.25.
-The comparison methods use the same candidate pool:
-
-| Method | Adaptation data |
-| --- | --- |
-| Random | 50 trajectories per task, selected uniformly |
-| u_r | 50 trajectories ranked by the reconstruction-based predictor |
-| u_f | 50 trajectories ranked by flow instability |
-| u_s | 50 trajectories ranked by stochastic prediction variance |
-| WAV (offline) | 50 trajectories ranked by IDM-guided rollout divergence |
-| Combined local | All 250 trajectories per task |
-
-The u_r/u_f/u_s rows are offline selection controls. They use the predictors to
-rank existing trajectories rather than rerunning the original online exploration
-policies. Released Base, Coverage-aware, and Combined checkpoints serve as
-additional references.
+Each task has a pool of 250 trajectories: 50 each from random, curiosity,
+expert, human, and no-op collection. WAV selects the 50 trajectories with the
+largest disagreement between observed futures and WM rollouts under IDM-inferred
+actions. Random and u_r/u_f/u_s select 50 trajectories from the same pool;
+Combined local uses all 250, with released Base, Coverage-aware, and Combined
+models as additional references.
 
 ### Online WAV
 
-Online WAV collects 50 new trajectories per task with a frozen WM and IDM.
-CEM proposes action sequences, the WM predicts their outcomes, and the IDM
-recovers actions from the imagined transitions. The action-recovery mismatch
-provides the exploration score. Training uses the actions and rewards recorded
-from the real environment.
-
-The retained configuration uses 128 candidates, planning horizon 32, 32 elites,
-3 CEM iterations, 2 stochastic predictions, and replanning every 16 steps.
-After collection, the dataset is fixed for WM training.
-
-We retain **alpha=0.75**: a training sample comes from the target-task group
-with probability 0.75, and from background tasks with probability 0.25. Replay
-and newly collected trajectories within a task are weighted by valid-window
-counts. Alpha is a task-sampling probability, not a WAV/Random mixing ratio.
+Online WAV uses CEM to find action sequences with high mismatch between proposed
+actions and actions recovered by the IDM from WM predictions, keeping both models
+frozen during collection. It collects 50 real-environment trajectories per task
+for subsequent WM training. We use **alpha=0.75**, sampling target tasks with
+probability 0.75 and background tasks with probability 0.25.
 
 ### Training and evaluation
 
