@@ -1,0 +1,43 @@
+{
+  "repo_id": "nicklashansen/mmbench2-models",
+  "revision": "b7f7b222526d557f80bf3bcf84ab824cb14f94b0",
+  "variants": {
+    "base": {
+      "tokenizer": {
+        "sha256": "95e521d36cba21bb47b14e4df4f1d626161c3f8f9955b75443f6b9b0b08fe323",
+        "bytes": 406957899
+      },
+      "dynamics": {
+        "sha256": "ec28ba7dd40113d1b0e0debfc37df42de0616b39f62dcb01d7ce7431c8803b59",
+        "bytes": 1017872707
+      }
+    },
+    "coverage_aware": {
+      "tokenizer": {
+        "sha256": "a88c0ed422aa61947e17f57b639538f1c6218e67e682803db13da43996183bf2",
+        "bytes": 406958027
+      },
+      "dynamics": {
+        "sha256": "eb5316bc99476d30666c2d92068de2f040bcc3e9e8f873f3602a208ae6a1c3eb",
+        "bytes": 1017872707
+      }
+    },
+    "combined": {
+      "tokenizer": {
+        "sha256": "e71b6eb3d26bd4b84c7ab94c68209fe69266a115754b3d14169e9fd589e81749",
+        "bytes": 406958091
+      },
+      "dynamics": {
+        "sha256": "46821026c1a9f8947c9ea080af0492a4eb04d201c2b7dc2b3177cc68031e7a54",
+        "bytes": 1017872835
+      }
+    }
+  },
+  "idm": {
+    "repo_id": "ffeng1017/World-Action-Verifier",
+    "repo_type": "space",
+    "filename": "assets/idm_tokenizer.pt",
+    "sha256": "593f2ec53c511b5cd29d6064302cf8b640408f90e154a940a061bd2541f5567b",
+    "bytes": 83978145
+  }
+}

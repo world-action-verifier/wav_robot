@@ -1,0 +1,38 @@
+{
+  "upstream": {
+    "repo": "https://github.com/nicklashansen/mmbench2",
+    "commit": "3dda6ea5bc60382ad9e1dcd1c6c3af67d69326a9",
+    "license": "upstream/LICENSE",
+    "bundled_files_sha256": {
+      "LICENSE": "780d8a79689622aa4eb3a96c7b1659c1da9c569e5669801c0b1aef991ebb28a0",
+      "README.md": "5fb63d03ce21538921bcb46f1839d471702b50c85b986cc30e62ecf185ba5a03",
+      "environment.yaml": "27965fea7d94388e793b1b42bc58d2847e89b102e70df7b28dabe8d2b3b5c3f5",
+      "src/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/collect_data.py": "ac4a5dada54dbab4ad994ce99cb84c5fe39a7a2b78c73ed66dd04b86e5803581",
+      "src/curiosity.py": "e0b9898aa3c037f7d36d26fdfb4629be0d3f7b64d8fa48752323ceca5057c9e8",
+      "src/download_checkpoints.py": "87e7c8547a0dcf6eccf006eadb4be734840cf2d055056c6fd15891c2fcfd8d57",
+      "src/download_dataset.py": "5c186d45f2e1253ba7f2a57b9172224137bc9b4b9bc143135d2c7e1d4f7892fe",
+      "src/env_wrapper.py": "b7770c1bd894a1ebe2f7ef3850e1cc73f80b578c225799dd6cdd168797ed2bab",
+      "src/interactive.py": "7affa900cfb1bd80ac1ce9501af74cf5c558a85eada445cce724649002c74cf3",
+      "src/model.py": "40f0c763e3e2a62c1dee2786cc6faffb7b08c8145068d8cf7d853ae89c893510",
+      "src/plan_cem.py": "ec88b76ff2051f344fe4d64843f2b4d1ff96d2675b38dcaf19f6a2f08de56c1c",
+      "src/preprocess_dataset.py": "a45e6710aa37882bdfb4b9d92d1fa51bc4a25785aeb1165aaafc4f66dd4227a7",
+      "src/run_interactive.sh": "094ad2889decb20a344a7df137c1884baf4b01ced11465614a563248974067e7",
+      "src/sharded_frame_dataset.py": "1138f66d439b2e79a8b38f3f1f040a5bddab95058d910c828f1a550659080b77",
+      "src/task_set.py": "ad6e72f4c9bad7224978098059c6a3d4b7256ae634f48028d5c869dcde33c130",
+      "src/train_dynamics.py": "9381c5e43836c7f9a784562ca595844c00fa9462cf4a4d7c8feec78df1844c3e",
+      "src/train_tokenizer.py": "a2b813fb48820b65d4f1cffc3c3e4757acd48c1e8cf4b0bb0aeeb9ec9d2e4074",
+      "src/uncertainty.py": "f7973d3e36955be10965b1638e1b88f4d0ddc297fa4c94eac35b7ae49c42cca9",
+      "src/wm_dataset.py": "ea17e2543348fbcf913deac51cad2526689c24672648fd3d3361f966875b705d",
+      "tasks.json": "f1fc23e70094844676f3a174297272e6920e509dab4ace158153661f55a8d689"
+    }
+  },
+  "idm": {
+    "source": "https://huggingface.co/spaces/ffeng1017/World-Action-Verifier",
+    "files": [
+      "idm_tokenizer.py",
+      "idm_hallucination.py"
+    ],
+    "weights": "released-checkpoints.json#idm"
+  }
+}
