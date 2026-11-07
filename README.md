@@ -151,62 +151,15 @@ same across methods. See [method options](README_WM_METHODS.md) and
 
 ## MMBench2 experiments
 
-We study WAV on the 10 seen and 10 unseen tasks used by
-[MMBench2](https://github.com/nicklashansen/mmbench2). Seen and unseen refer to
-the original WM pretraining split; both groups receive task-specific adaptation
-data in these experiments. The IDM here is a frozen tokenizer-latent action
-predictor, separate from the CLAM used in the robot experiments.
+Code and run instructions are in [mmbench2/](mmbench2/README.md), covering the
+original 10 seen and 10 unseen tasks.
 
-### Offline WAV
+- **WAV offline:** Select 50 of 250 trajectories per task by IDM-guided rollout divergence.
+- **WAV online:** Collect 50 trajectories per task with action-cycle CEM, then train with alpha=0.75.
+- **Baselines:** u_s, u_r, u_f and Random, each selecting 50 trajectories from the same pool.
 
-- **Pool:** 250 trajectories per task, 50 each from random, curiosity, expert,
-  human, and no-op collection.
-- **Selection:** Keep the top 50 by disagreement between observed futures and
-  WM rollouts under IDM-inferred actions.
-- **Baselines:** Random and u_r/u_f/u_s select 50 from the same pool; Combined
-  local uses all 250. Released Base, Coverage-aware, and Combined are references.
-
-### Online WAV
-
-- **Exploration:** CEM searches for action sequences with high mismatch between
-  proposed actions and IDM-recovered actions from WM predictions. Both models
-  remain frozen during collection.
-- **Data:** Collect 50 real-environment trajectories per task for WM training.
-- **Task sampling:** alpha=0.75 gives 75% target tasks and 25% background tasks.
-
-### Training and evaluation
-
-Local continuation runs start from Coverage-aware and train the tokenizer for
-50k updates, followed by dynamics for 30k updates. Global batch sizes are 96
-and 512, respectively. We use AdamW with learning rate 1e-4 and retain background
-replay. Offline runs use target-task sampling alpha=0.5; online WAV uses 0.75.
-The Base tokenizer supplies the frozen IDM's feature space.
-
-Evaluation covers reconstruction, video rollout prediction, action
-interventions, and MPC on all 20 tasks. Offline evaluation uses context 8,
-horizon 16, 8 denoising steps, and context noise 0.1. MPC uses three full
-episodes per task with planning horizon 32 and replanning every 16 steps.
-
-### Checkpoints
-
-Download the tokenizer and dynamics files for each variant from the original
-authors' [Hugging Face model repository](https://huggingface.co/nicklashansen/mmbench2-models).
-Use the two files from the same variant together:
-
-| Variant | Tokenizer | Dynamics |
-| --- | --- | --- |
-| Base | [tokenizer.pt](https://huggingface.co/nicklashansen/mmbench2-models/resolve/b7f7b222526d557f80bf3bcf84ab824cb14f94b0/base/tokenizer.pt?download=true) | [dynamics.pt](https://huggingface.co/nicklashansen/mmbench2-models/resolve/b7f7b222526d557f80bf3bcf84ab824cb14f94b0/base/dynamics.pt?download=true) |
-| Combined | [tokenizer.pt](https://huggingface.co/nicklashansen/mmbench2-models/resolve/b7f7b222526d557f80bf3bcf84ab824cb14f94b0/combined/tokenizer.pt?download=true) | [dynamics.pt](https://huggingface.co/nicklashansen/mmbench2-models/resolve/b7f7b222526d557f80bf3bcf84ab824cb14f94b0/combined/dynamics.pt?download=true) |
-
-These links use the release revision from our experiments. Coverage-aware, used
-for continuation training, is available in the same model repository under
-[coverage_aware](https://huggingface.co/nicklashansen/mmbench2-models/tree/b7f7b222526d557f80bf3bcf84ab824cb14f94b0/coverage_aware).
-
-The model pairs used in our MMBench2 experiments are hosted in
-[WAV-MMBench-Checkpoint](https://huggingface.co/ffeng1017/WAV-MMBench-Checkpoint).
-The repository contains `default (WAV)`, `random-pool50`, `ur-norm-pool50`,
-`uf-norm-pool50`, and `us-norm-pool50`, each with a tokenizer and dynamics file.
-Use the two files from the same directory together.
+Model pairs are available from the original authors' [Base/Combined release](https://huggingface.co/nicklashansen/mmbench2-models)
+and the [archived MMBench2 checkpoints](https://huggingface.co/ffeng1017/WAV-MMBench-Checkpoint).
 
 ## Tests
 

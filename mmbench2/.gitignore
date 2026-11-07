@@ -1,0 +1,17 @@
+_deps/
+data/
+checkpoints/
+runs/
+wandb/
+__pycache__/
+*.py[cod]
+*.pt
+*.pth
+*.pkl
+*.ckpt
+*.safetensors
+*.npz
+*.npy
+*.h5
+*.hdf5
+.env*
