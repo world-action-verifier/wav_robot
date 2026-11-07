@@ -4,12 +4,6 @@
   Self-Improving World Models via Forward-Inverse Asymmetry
 </h2>
 
-<p>
-  Yuejiang Liu<sup>*</sup>, Fan Feng<sup>*</sup>, Lingjing Kong<sup>*</sup>,
-  Weifeng Lu<sup>*</sup>, Jinzhou Tang, Kun Zhang, Kevin Murphy, Chelsea Finn, Yilun Du
-</p>
-<p><sup>*</sup> Equal contribution</p>
-<p><strong>NeurIPS 2026</strong></p>
 
 <a href="https://arxiv.org/abs/2604.01985"><img src="https://img.shields.io/badge/arXiv-2604.01985-b31b1b" alt="arXiv"></a>
 <a href="https://world-action-verifier.github.io/"><img src="https://img.shields.io/badge/Project-Website-blue" alt="Project website"></a>
